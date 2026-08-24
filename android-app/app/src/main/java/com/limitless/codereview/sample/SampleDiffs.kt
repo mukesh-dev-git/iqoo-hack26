@@ -3,7 +3,7 @@ package com.limitless.codereview.sample
 /**
  * Mirrors /sample-diffs at the repo root, inlined so the dashboard's "Sample 1/2/3" buttons
  * work with zero setup (no assets, no file I/O) — one-tap demo data for recording the walkthrough.
- * Keep these in sync with /sample-diffs/*.diff if those change.
+ * Keep these in sync with the diff files under /sample-diffs if those change.
  */
 data class SampleDiff(val label: String, val content: String)
 
