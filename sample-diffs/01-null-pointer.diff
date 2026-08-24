@@ -1,0 +1,13 @@
+diff --git a/UserProfile.kt b/UserProfile.kt
+index 1111111..2222222 100644
+--- a/UserProfile.kt
++++ b/UserProfile.kt
+@@ -10,6 +10,9 @@ class UserProfile(private val repository: UserRepository) {
+
+     fun displayName(): String {
+         val user = repository.findById(currentUserId)
+-        return user?.name ?: "Unknown"
++        return user.name
+     }
+
+     fun updateEmail(newEmail: String) {

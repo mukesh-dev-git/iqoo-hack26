@@ -1,0 +1,29 @@
+# Android / Gradle
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+/android-app/app/release/
+/android-app/app/debug/
+
+# llama.cpp native sources / models (large — do not commit)
+android-app/app/src/main/cpp/llama.cpp/
+*.gguf
+*.bin
+
+# Python (laptop-bridge)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# misc
+*.log
+.env

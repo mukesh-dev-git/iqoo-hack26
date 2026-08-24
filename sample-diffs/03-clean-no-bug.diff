@@ -1,0 +1,12 @@
+diff --git a/Logger.kt b/Logger.kt
+index 5555555..6666666 100644
+--- a/Logger.kt
++++ b/Logger.kt
+@@ -3,6 +3,7 @@ object Logger {
+
+     fun info(tag: String, message: String) {
+         println("[$tag] INFO: $message")
++        history.add("$tag: $message")
+     }
+
+     private val history = mutableListOf<String>()

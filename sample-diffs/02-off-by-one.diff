@@ -1,0 +1,13 @@
+diff --git a/PageIndexer.kt b/PageIndexer.kt
+index 3333333..4444444 100644
+--- a/PageIndexer.kt
++++ b/PageIndexer.kt
+@@ -5,7 +5,7 @@ class PageIndexer(private val items: List<String>) {
+
+     fun pageOf(index: Int): List<String> {
+         val start = index * PAGE_SIZE
+-        val end = minOf(start + PAGE_SIZE, items.size)
++        val end = minOf(start + PAGE_SIZE, items.size + 1)
+         return items.subList(start, end)
+     }
+ }
