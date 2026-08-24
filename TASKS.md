@@ -26,12 +26,16 @@ uses day to day.
 
 ## Mukesh — voice trigger, demo, submission (this repo's owner)
 
-- [ ] Implement mic button + `VoiceTrigger` wiring in `MainActivity` (runtime mic permission
+- [x] Implement mic button + `VoiceTrigger` wiring in `MainActivity` (runtime mic permission
       request, "review this" → calls `engine.review()`)
 - [ ] Curate/expand `sample-diffs/` if more demo cases are needed
 - [ ] Record 60–90s screen capture: paste diff → voice trigger → findings, fully offline
 - [ ] Fill in Team section of `../phase1-submission-draft.md`
 - [ ] Turn the draft into the deck (PDF/PPT)
+- [ ] **Before submitting:** flip this repo to public (or add the organizer as a collaborator) —
+      it's private right now, deliberately, until the demo video is ready. The submission form's
+      "Prototype URL" field should point at the demo video once recorded, with this repo as the
+      backup/source-code link — not the other way around.
 
 ## Shared / whoever gets to it first
 
