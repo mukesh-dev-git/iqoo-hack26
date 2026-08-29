@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +36,9 @@ import com.limitless.codereview.engine.ReviewEngine
 import com.limitless.codereview.engine.Severity
 import com.limitless.codereview.engine.StubReviewEngine
 import com.limitless.codereview.sample.SampleDiffs
+import com.limitless.codereview.settings.LaptopSettingsSheet
+import com.limitless.codereview.settings.loadLaptopUrl
+import com.limitless.codereview.settings.saveLaptopUrl
 import com.limitless.codereview.ui.theme.*
 import com.limitless.codereview.voice.VoiceTrigger
 import kotlinx.coroutines.launch
@@ -47,13 +52,14 @@ import kotlinx.coroutines.launch
  * code) — see ui/theme/ for the shared tokens.
  *
  * TODO (Delfi): swap `onDeviceEngine` below to LlamaCppReviewEngine once it works.
- * TODO (Nambert): point `laptopEngine`'s base URL at your laptop's actual local IP for testing.
+ *
+ * Laptop bridge URL is configurable at runtime via the ⚙ settings sheet (Nambert) — no
+ * recompile needed to point at a different laptop IP. See settings/LaptopSettings.kt.
  */
 class MainActivity : ComponentActivity() {
 
     // Swap this single line to change which engine powers the on-device pass.
     private val onDeviceEngine: ReviewEngine = StubReviewEngine()
-    private val laptopEngine: ReviewEngine = LaptopBridgeReviewEngine()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,7 +69,7 @@ class MainActivity : ComponentActivity() {
                 Box(modifier = Modifier.fillMaxSize().gridBackground()) {
                     when (screen) {
                         AppScreen.Review -> ReviewScreen(
-                            onDeviceEngine, laptopEngine,
+                            onDeviceEngine,
                             onShowPipeline = { screen = AppScreen.Pipeline }
                         )
                         AppScreen.Pipeline -> PipelineTimelineScreen(
@@ -80,10 +86,19 @@ private enum class AppScreen { Review, Pipeline }
 
 private const val ESCALATION_LINE_THRESHOLD = 40
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReviewScreen(onDeviceEngine: ReviewEngine, laptopEngine: ReviewEngine, onShowPipeline: () -> Unit) {
+fun ReviewScreen(onDeviceEngine: ReviewEngine, onShowPipeline: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // Laptop URL is read from SharedPreferences and the engine re-created when it changes —
+    // set it via the ⚙ button, no recompile needed for a different laptop IP at the event.
+    var laptopUrl by remember { mutableStateOf(loadLaptopUrl(context)) }
+    val laptopEngine by remember(laptopUrl) {
+        derivedStateOf<ReviewEngine> { LaptopBridgeReviewEngine(laptopUrl) }
+    }
+    var showSettings by remember { mutableStateOf(false) }
 
     var diffText by remember { mutableStateOf("") }
     var findings by remember { mutableStateOf<List<Finding>>(emptyList()) }
@@ -164,13 +179,26 @@ fun ReviewScreen(onDeviceEngine: ReviewEngine, laptopEngine: ReviewEngine, onSho
                     color = TextFaint
                 )
             }
-            Text(
-                "how it works →",
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMono),
-                color = Accent,
-                modifier = Modifier.clickable(onClick = onShowPipeline)
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "how it works →",
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMono),
+                    color = Accent,
+                    modifier = Modifier.clickable(onClick = onShowPipeline)
+                )
+                IconButton(onClick = { showSettings = true }, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Settings, contentDescription = "Laptop bridge settings", tint = TextLo)
+                }
+            }
         }
+        Spacer(Modifier.height(8.dp))
+
+        // Where escalation will go — tap the gear above to change it.
+        Text(
+            "bridge: $laptopUrl",
+            style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMono),
+            color = TextFaint
+        )
         Spacer(Modifier.height(16.dp))
 
         // Quick-load sample diffs.
@@ -257,6 +285,18 @@ fun ReviewScreen(onDeviceEngine: ReviewEngine, laptopEngine: ReviewEngine, onSho
         LazyColumn {
             items(findings) { finding -> FindingRow(finding) }
         }
+    }
+
+    if (showSettings) {
+        LaptopSettingsSheet(
+            currentUrl = laptopUrl,
+            onSave = { newUrl ->
+                laptopUrl = newUrl
+                saveLaptopUrl(context, newUrl)
+                showSettings = false
+            },
+            onDismiss = { showSettings = false }
+        )
     }
 }
 

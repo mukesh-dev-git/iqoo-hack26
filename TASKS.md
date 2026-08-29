@@ -16,12 +16,15 @@ uses day to day.
 
 ## Nambert — laptop-bridge + escalation tier (GPU laptop)
 
-- [ ] `laptop-bridge/`: install deps, `ollama pull qwen2.5-coder:7b`, run the server
-- [ ] Confirm `/review` returns sensible findings via curl on all three sample diffs
-- [ ] Tune the prompt template in `server.py` if parsing misses real model output
-- [ ] Test `LaptopBridgeReviewEngine` from the Android app over shared Wi-Fi (get your
-      laptop's local IP to Delfi/Mukesh)
-- [ ] Add the "send to laptop" escalation button/flow in the app UI (with Mukesh)
+- [x] Install Ollama, `ollama pull qwen2.5-coder:7b` (4.7 GB), server running on port 8000
+- [x] Fixed `requirements.txt` for Python 3.14 (pydantic wheel issue)
+- [x] Confirmed `/review` via all three sample diffs — 2/3 clean catches, 1 known 7B-model
+      miss (off-by-one), documented and acceptable for demo (see `laptop-bridge/README.md`)
+- [x] Improved `server.py`: richer prompt, proper error handling (503/504), `/status`
+      endpoint, CORS, structured logging
+- [x] Built the laptop-IP settings UI in the app (`settings/LaptopSettings.kt`, ⚙ button →
+      bottom sheet → persists via SharedPreferences, no recompile needed)
+- [ ] Share your laptop's local IP with Delfi/Mukesh for Wi-Fi testing (`ipconfig`)
 - See `laptop-bridge/README.md`.
 
 ## Mukesh — voice trigger, demo, submission (this repo's owner)
@@ -39,5 +42,5 @@ uses day to day.
 
 ## Shared / whoever gets to it first
 
-- [ ] Decide phone↔laptop pairing UX (hardcoded IP is a placeholder — QR code? manual entry?)
+- [x] Decide phone↔laptop pairing UX — manual IP entry via ⚙ settings sheet in the app (done)
 - [ ] End-to-end dry run: all three engines working, escalation flow demoed live
