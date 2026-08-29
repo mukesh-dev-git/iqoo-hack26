@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -186,9 +184,12 @@ fun ReviewScreen(onDeviceEngine: ReviewEngine, onShowPipeline: () -> Unit) {
                     color = Accent,
                     modifier = Modifier.clickable(onClick = onShowPipeline)
                 )
-                IconButton(onClick = { showSettings = true }, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.Settings, contentDescription = "Laptop bridge settings", tint = TextLo)
-                }
+                Text(
+                    "settings",
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMono),
+                    color = Brass,
+                    modifier = Modifier.clickable(onClick = { showSettings = true })
+                )
             }
         }
         Spacer(Modifier.height(8.dp))
