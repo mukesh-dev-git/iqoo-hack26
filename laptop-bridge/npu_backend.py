@@ -50,14 +50,12 @@ with open(_jinja_path, encoding="utf-8") as _f:
     _template_str = _f.read()
 
 
-def generate(diff: str) -> str:
-    """Run one review generation on the NPU. Returns the raw model output text
-    (still in LINE:/SEVERITY:/MSG: form — parsing happens in server.py, same as the Ollama path)."""
-    user_content = PROMPT_TEMPLATE.format(diff=diff)
+def generate(prompt: str, system_prompt: str = SYSTEM_PROMPT) -> str:
+    """Run one text generation on the NPU."""
     messages = json.dumps(
         [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_content},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
         ]
     )
     prompt = _tokenizer.apply_chat_template(

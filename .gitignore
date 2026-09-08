@@ -12,6 +12,7 @@ captures/
 *.aab
 /android-app/app/release/
 /android-app/app/debug/
+/android-app/.gradle-home/
 
 # llama.cpp native sources / models (large — do not commit)
 android-app/app/src/main/cpp/llama.cpp/

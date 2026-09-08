@@ -10,6 +10,7 @@ codebase/
 ├── android-app/       the phone app (Kotlin, Jetpack Compose) — Delfi + Mukesh
 ├── laptop-bridge/      FastAPI server wrapping Ollama, stands in for Office Kit — Nambert
 ├── sample-diffs/       curated diffs for demoing (see 01/02/03)
+├── docs/               design docs (NPU benchmarks, GitHub integration, multi-modal features)
 └── CONTRACT.md          the interface everyone builds against — READ THIS FIRST
 ```
 
