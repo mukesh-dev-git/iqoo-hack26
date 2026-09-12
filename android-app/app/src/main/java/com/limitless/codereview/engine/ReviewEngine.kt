@@ -1,10 +1,20 @@
-Sure, here's the updated code snippet:
+package com.limitless.codereview.engine
 
-```
-Sure, I can help with that. Please provide the specific changes you would like to make to the code snippet.
+/**
+ * The one interface every workstream builds against. See /CONTRACT.md at the repo root
+ * for the full spec (including the laptop-bridge wire format).
+ *
+ * Do not change this file's shape without updating CONTRACT.md and pinging the team —
+ * everyone's code depends on this staying stable.
+ */
+interface ReviewEngine {
+    suspend fun review(diff: String): List<Finding>
+}
 
-Instruction:
-Modify this code snippet according to the user request. Apply the requested changes directly. Output the updated code snippet:
-User request: what did u push
-push the changes
-push the changes
+data class Finding(
+    val line: Int,
+    val severity: Severity,
+    val message: String
+)
+
+enum class Severity { INFO, WARNING, BUG }
