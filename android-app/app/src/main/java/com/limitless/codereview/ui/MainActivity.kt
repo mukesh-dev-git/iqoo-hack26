@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
@@ -35,6 +36,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,6 +62,11 @@ import kotlinx.coroutines.launch
  * diff is large, escalate to the laptop bridge from the reply. See /CONTRACT.md for the
  * interface and escalation rule this implements.
  *
+ * ☰ → "New session" pushes SessionScreen — the "clone a workspace, ask the agent to explore/
+ * edit/run" entry point from the pitch materials. Today it just seeds the chat with whatever
+ * you type there and runs it through the same ReviewEngine; there's no real workspace/file
+ * access yet (see TASKS.md — cloning and a real editor are still open work).
+ *
  * Visual language matches the pitch materials deliberately (dark, jade/brass, monospace for
  * code, serif for the IQF voice) — see ui/theme/ for the shared tokens.
  *
@@ -77,11 +85,24 @@ class MainActivity : ComponentActivity() {
         setContent {
             CodeReviewTheme {
                 var screen by remember { mutableStateOf(AppScreen.Review) }
+                // Set once when a session is started from SessionScreen, read once when
+                // ReviewScreen next mounts (see its `initialDiffText` param) to seed the chat.
+                var pendingMessage by remember { mutableStateOf<String?>(null) }
                 Box(modifier = Modifier.fillMaxSize().gridBackground()) {
                     when (screen) {
                         AppScreen.Review -> ReviewScreen(
                             onDeviceEngine,
-                            onShowPipeline = { screen = AppScreen.Pipeline }
+                            onShowPipeline = { screen = AppScreen.Pipeline },
+                            onNewSession = { screen = AppScreen.Session },
+                            initialDiffText = pendingMessage
+                        )
+                        AppScreen.Session -> SessionScreen(
+                            workspacePath = DEFAULT_WORKSPACE_PATH,
+                            onBack = { screen = AppScreen.Review },
+                            onStartSession = { message ->
+                                pendingMessage = message
+                                screen = AppScreen.Review
+                            }
                         )
                         AppScreen.Pipeline -> PipelineTimelineScreen(
                             onBack = { screen = AppScreen.Review }
@@ -93,14 +114,22 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class AppScreen { Review, Pipeline }
+private enum class AppScreen { Review, Session, Pipeline }
 
 private const val ESCALATION_LINE_THRESHOLD = 40
 private const val ON_DEVICE_MODEL_LABEL = "Qwen2.5 Coder 1.5B active"
 
+// Placeholder until repo cloning lands (TASKS.md) — the workspace a "New session" is against.
+private const val DEFAULT_WORKSPACE_PATH = "~/projects/current-repo"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReviewScreen(onDeviceEngine: ReviewEngine, onShowPipeline: () -> Unit) {
+fun ReviewScreen(
+    onDeviceEngine: ReviewEngine,
+    onShowPipeline: () -> Unit,
+    onNewSession: () -> Unit,
+    initialDiffText: String? = null,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -115,7 +144,9 @@ fun ReviewScreen(onDeviceEngine: ReviewEngine, onShowPipeline: () -> Unit) {
     var attachExpanded by remember { mutableStateOf(false) }
     var maskDiff by remember { mutableStateOf(false) } // 👁 — hide the diff from over-the-shoulder glances
 
-    var diffText by remember { mutableStateOf("") }
+    // Seeded once from SessionScreen's "Message the coding agent…" composer, if that's how we
+    // got here — read once at mount, not kept in sync with the parameter afterwards.
+    var diffText by remember { mutableStateOf(initialDiffText ?: "") }
     var findings by remember { mutableStateOf<List<Finding>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var isEscalating by remember { mutableStateOf(false) }
@@ -130,6 +161,14 @@ fun ReviewScreen(onDeviceEngine: ReviewEngine, onShowPipeline: () -> Unit) {
             hasReviewed = true
             reviewedBy = source
             busyFlag(false)
+        }
+    }
+
+    // A session started elsewhere lands here already carrying its first message — run it
+    // immediately instead of waiting for another tap on send.
+    LaunchedEffect(Unit) {
+        if (!initialDiffText.isNullOrBlank()) {
+            runReview(onDeviceEngine, "on-device") { isLoading = it }
         }
     }
 
@@ -195,6 +234,10 @@ fun ReviewScreen(onDeviceEngine: ReviewEngine, onShowPipeline: () -> Unit) {
                     Icon(Icons.Default.Menu, contentDescription = "Menu", tint = TextHi)
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text("New session") },
+                        onClick = { menuExpanded = false; onNewSession() }
+                    )
                     DropdownMenuItem(
                         text = { Text("How it works") },
                         onClick = { menuExpanded = false; onShowPipeline() }
@@ -265,6 +308,103 @@ fun ReviewScreen(onDeviceEngine: ReviewEngine, onShowPipeline: () -> Unit) {
             },
             onDismiss = { showSettings = false }
         )
+    }
+}
+
+/**
+ * "New session" — the workspace/agent framing from the pitch mockup, reached via ☰ → New
+ * session. There's no real clone/file-explore yet (TASKS.md), so sending a message here just
+ * hands it to ReviewScreen as the opening chat message over the same ReviewEngine.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SessionScreen(
+    workspacePath: String,
+    onBack: () -> Unit,
+    onStartSession: (String) -> Unit,
+) {
+    var message by remember { mutableStateOf("") }
+    var maskMessage by remember { mutableStateOf(false) } // 👁 — hide the prompt while typing it
+
+    fun send() {
+        if (message.isNotBlank()) onStartSession(message)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextHi)
+            }
+            IconButton(onClick = { maskMessage = !maskMessage }) {
+                Icon(
+                    if (maskMessage) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                    contentDescription = "Toggle prompt privacy",
+                    tint = TextHi
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            "New Session",
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+            color = TextHi
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            workspacePath,
+            style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetBrainsMono),
+            color = TextFaint
+        )
+
+        Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Text(
+                "Ask the coding agent to explore, edit, or run something in this workspace.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextFaint,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            TextField(
+                value = message,
+                onValueChange = { message = it },
+                placeholder = { Text("Message the coding agent…", color = TextFaint) },
+                textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono, color = TextHi),
+                visualTransformation = if (maskMessage) PasswordVisualTransformation('•') else VisualTransformation.None,
+                shape = RoundedCornerShape(14.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Surface,
+                    unfocusedContainerColor = Surface,
+                    focusedIndicatorColor = Accent,
+                    unfocusedIndicatorColor = FrameEdge,
+                    cursorColor = Accent,
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = { send() }, enabled = message.isNotBlank()) {
+                Icon(
+                    Icons.Default.Send,
+                    contentDescription = "Start session",
+                    tint = if (message.isNotBlank()) Accent else TextFaint
+                )
+            }
+        }
     }
 }
 
