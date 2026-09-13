@@ -205,3 +205,14 @@ def status() -> StatusResponse:
         uptime_s=round(time.time() - _server_start, 1),
         ollama_reachable=ollama_ok,
     )
+
+
+@app.get("/ping")
+def ping() -> dict[str, str | float]:
+    """Lightweight round-trip ping for latency measurement from mobile clients."""
+    return {
+        "pong": True,
+        "timestamp": time.time(),
+        "backend": BACKEND,
+    }
+
